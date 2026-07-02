@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAMCO Finance</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#ffffff;--panel:#f5f7fa;--line:#d8dee4;--txt:#111;--mut:#5c6b7a;--accent:#1565c0;--good:#1a7f37;--bad:#cf222e}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 -apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt)}
+header{padding:14px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+h1{font-size:18px;margin:0;font-weight:600}
+.sub{color:var(--mut);font-size:12px}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tab{padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;border:1px solid var(--line);background:var(--panel)}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.panel{display:none;padding:16px 24px}
+.panel.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card .l{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.card .n{font-size:20px;font-weight:700;margin-top:2px}
+.card .d{font-size:12px;margin-top:2px}
+.up{color:var(--good)}.down{color:var(--bad)}
+.charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px}
+.chartbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;height:260px}
+.chartbox h3{margin:0 0 6px;font-size:13px}
+.chartbox .cwrap{position:relative;height:200px}
+select,input[type=search]{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:13px}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.twrap{overflow:auto;max-height:calc(100vh - 220px);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;font-size:12.5px;width:100%}
+th,td{padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
+th{position:sticky;top:0;background:#eef1f5;z-index:2;font-size:11px;color:var(--mut)}
+td:first-child,th:first-child{position:sticky;left:0;background:#fff;text-align:left;z-index:1;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+th:first-child{background:#eef1f5;z-index:3}
+tr.section td{background:#e8edf5!important;font-weight:700}
+tr:hover td{background:#f0f3f7}
+.neg{color:var(--bad)}
+footer{padding:10px 24px;color:var(--mut);font-size:12px;border-top:1px solid var(--line)}
+a{color:var(--accent)}
+</style></head><body>
+<div id="gate" style="position:fixed;inset:0;background:#0b1220;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif">
+  <div style="background:#fff;color:#1c2330;padding:28px 26px;border-radius:14px;width:320px;box-shadow:0 12px 44px rgba(0,0,0,.5)">
+    <div style="font-size:18px;font-weight:700;margin-bottom:4px">CAMCO Finance</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:16px">Enter the finance password to view.</div>
+    <input id="gatePw" type="password" placeholder="Password" style="width:100%;padding:9px 11px;border:1px solid #cbd2dc;border-radius:8px;font:inherit;margin-bottom:10px">
+    <button id="gateBtn" style="width:100%;padding:9px;border:none;border-radius:8px;background:#1f6feb;color:#fff;font:inherit;font-weight:600;cursor:pointer">View financials</button>
+    <div id="gateMsg" style="font-size:12px;color:#c0392b;margin-top:8px;min-height:14px"></div>
+  </div>
+</div>
+<header>
+  <div><h1>CAMCO Weekly Financials</h1><div class="sub" id="meta"></div></div>
+  <div class="tabs">
+    <div class="tab active" data-t="trends">Trends</div>
+    <div class="tab" data-t="table">Full Table</div>
+    <div class="tab" data-t="compare">Compare</div>
+  </div>
+</header>
+
+<div class="panel active" id="p-trends">
+  <div class="controls"><label class="sub">Range:
+    <select id="range"><option value="26">6 months</option><option value="52" selected>1 year</option><option value="156">3 years</option><option value="0">All</option></select>
+  </label></div>
+  <div class="cards" id="cards"></div>
+  <div class="charts" id="charts"></div>
+</div>
+
+<div class="panel" id="p-table">
+  <div class="controls">
+    <label class="sub">Weeks shown:
+      <select id="weeks"><option>8</option><option selected>13</option><option>26</option><option>52</option></select>
+    </label>
+    <input type="search" id="rowq" placeholder="Filter rows...">
+  </div>
+  <div class="twrap"><table id="ft"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<div class="panel" id="p-compare">
+  <div class="controls">
+    <label class="sub">From: <select id="cmpA"></select></label>
+    <label class="sub">To: <select id="cmpB"></select></label>
+    <label class="sub"><input type="checkbox" id="onlyChanged" checked> Only changed rows</label>
+  </div>
+  <div class="twrap"><table id="ct"><thead><tr><th>Line Item</th><th id="chA"></th><th id="chB"></th><th>Change</th><th>%</th></tr></thead><tbody></tbody></table></div>
+</div>
+
+<footer>Private &mdash; finance password only. Data updates daily from the Weekly Financials workbook. <a href="https://camco-hub.netlify.app">Back to Hub</a></footer>
+
+<script type="text/plain" id="appsrc">
+const F = window.FINANCE_DATA;
+const DATES = F.dates;
+const ROWS = F.rows;
+const byR = {}; ROWS.forEach(x=>byR[x.r]=x);
+document.getElementById('meta').textContent = F.workbook + ' · extracted ' + F.generatedAt;
+const fmt=(n,d=0)=>n==null?'–':(n<0?'-$':'$')+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:d});
+const fmtN=n=>n==null?'–':Number(n).toLocaleString('en-US',{maximumFractionDigits:0});
+// last index with any numeric value in key rows
+let LAST=DATES.length-1;
+while(LAST>0 && [10,21,75].every(r=>!byR[r]||byR[r].v[LAST]==null)) LAST--;
+const PREV=LAST-1;
+// section rows (bold in table)
+const SECTIONS=new Set([3,15,23,65,77,82,86,101,119,156,158,163]);
+// ---- Trends ----
+const KEY=[
+  {r:10,label:'Total Available Cash'},
+  {r:12,label:'Line of Credit',invert:true},
+  {r:21,label:'Total A/R'},
+  {r:75,label:'Total A/P',invert:true},
+  {r:95,label:'Total Inventory'},
+  {r:85,label:'Total MRB + WIP'},
+  {r:113,label:'Customer Invoices (wk)'},
+  {r:116,label:'Cust. Orders Placed (wk)'},
+  {r:156,label:'Total Debt',invert:true},
+  {r:163,label:'Net Cash Flow (wk)'},
+];
+function cards(){
+  const el=document.getElementById('cards'); el.innerHTML='';
+  KEY.forEach(k=>{
+    const row=byR[k.r]; if(!row) return;
+    const cur=row.v[LAST], prev=row.v[PREV];
+    let dHtml='';
+    if(cur!=null&&prev!=null){
+      const diff=cur-prev;
+      const good=k.invert? diff<0 : diff>0;
+      dHtml='<div class="d '+(good?'up':'down')+'">'+(diff>=0?'+':'-')+'$'+Math.abs(diff).toLocaleString('en-US',{maximumFractionDigits:0})+' vs prior wk</div>';
+    }
+    el.insertAdjacentHTML('beforeend','<div class="card"><div class="l">'+k.label+'</div><div class="n">'+fmt(cur)+'</div>'+dHtml+'</div>');
+  });
+}
+let chartObjs=[];
+function charts(){
+  chartObjs.forEach(c=>c.destroy()); chartObjs=[];
+  const el=document.getElementById('charts'); el.innerHTML='';
+  const win=parseInt(document.getElementById('range').value,10);
+  const s=win>0?Math.max(0,LAST-win+1):0;
+  const labels=DATES.slice(s,LAST+1);
+  KEY.forEach((k,i)=>{
+    const row=byR[k.r]; if(!row) return;
+    const id='ch'+i;
+    el.insertAdjacentHTML('beforeend','<div class="chartbox"><h3>'+k.label+'</h3><div class="cwrap"><canvas id="'+id+'"></canvas></div></div>');
+    const data=row.v.slice(s,LAST+1);
+    chartObjs.push(new Chart(document.getElementById(id),{type:'line',
+      data:{labels:labels,datasets:[{data:data,borderColor:'#1565c0',borderWidth:1.6,pointRadius:0,tension:.25,spanGaps:true}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{maxTicksLimit:10,autoSkip:true}},y:{ticks:{callback:v=>'$'+(Math.abs(v)>=1e6?(v/1e6).toFixed(1)+'M':(v/1e3).toFixed(0)+'K')}}}}}));
+  });
+}
+document.getElementById('range').addEventListener('change',charts);
+// ---- Full table ----
+function table(){
+  const n=parseInt(document.getElementById('weeks').value,10);
+  const q=document.getElementById('rowq').value.toLowerCase().trim();
+  const s=Math.max(0,LAST-n+1);
+  const th=document.querySelector('#ft thead');
+  th.innerHTML='<tr><th>Line Item</th>'+DATES.slice(s,LAST+1).map(d=>'<th>'+d+'</th>').join('')+'</tr>';
+  const tb=document.querySelector('#ft tbody');
+  tb.innerHTML=ROWS.filter(r=>!q||r.label.toLowerCase().includes(q)).map(r=>{
+    const cls=SECTIONS.has(r.r)?' class="section"':'';
+    return '<tr'+cls+'><td title="'+r.label.replace(/"/g,'&quot;')+'">'+r.label+'</td>'+
+      r.v.slice(s,LAST+1).map(v=>{
+        if(v==null)return'<td></td>';
+        if(typeof v!=='number')return'<td>'+String(v)+'</td>';
+        return '<td'+(v<0?' class="neg"':'')+'>'+fmtN(v)+'</td>';
+      }).join('')+'</tr>';
+  }).join('');
+}
+['weeks','rowq'].forEach(id=>document.getElementById(id).addEventListener('input',table));
+// ---- Compare ----
+function initCompare(){
+  const a=document.getElementById('cmpA'), b=document.getElementById('cmpB');
+  DATES.forEach((d,i)=>{
+    if(!d)return;
+    a.insertAdjacentHTML('beforeend','<option value="'+i+'">'+d+'</option>');
+    b.insertAdjacentHTML('beforeend','<option value="'+i+'">'+d+'</option>');
+  });
+  a.value=Math.max(0,LAST-13); b.value=LAST;
+  compare();
+}
+function compare(){
+  const ia=+document.getElementById('cmpA').value, ib=+document.getElementById('cmpB').value;
+  const only=document.getElementById('onlyChanged').checked;
+  document.getElementById('chA').textContent=DATES[ia];
+  document.getElementById('chB').textContent=DATES[ib];
+  const tb=document.querySelector('#ct tbody');
+  tb.innerHTML=ROWS.map(r=>{
+    const va=r.v[ia], vb=r.v[ib];
+    if(typeof va!=='number'&&typeof vb!=='number')return'';
+    const diff=(typeof va==='number'&&typeof vb==='number')?vb-va:null;
+    if(only&&(diff==null||Math.abs(diff)<0.005))return'';
+    const pct=(diff!=null&&va)?(diff/Math.abs(va)*100):null;
+    const cls=SECTIONS.has(r.r)?' class="section"':'';
+    return '<tr'+cls+'><td>'+r.label+'</td><td>'+fmtN(va)+'</td><td>'+fmtN(vb)+'</td>'+
+      '<td class="'+(diff>0?'up':diff<0?'neg':'')+'">'+(diff==null?'–':fmtN(diff))+'</td>'+
+      '<td>'+(pct==null?'–':pct.toFixed(1)+'%')+'</td></tr>';
+  }).join('');
+}
+['cmpA','cmpB','onlyChanged'].forEach(id=>document.getElementById(id).addEventListener('input',compare));
+// tabs
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('p-'+t.dataset.t).classList.add('active');
+});
+cards(); charts(); table(); initCompare();
+</script>
+
+<script>
+async function decryptData(b64,password){
+  const raw=Uint8Array.from(atob(b64.trim()),c=>c.charCodeAt(0));
+  const salt=raw.slice(0,16),iv=raw.slice(16,32),ct=raw.slice(32);
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},km,{name:'AES-CBC',length:256},false,['decrypt']);
+  const pt=await crypto.subtle.decrypt({name:'AES-CBC',iv},key,ct);
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+let PW=null;
+async function fetchAndShow(showErr){
+  try{
+    const r=await fetch('https://raw.githubusercontent.com/giggles8d/camco-data/main/finance_data.enc?_='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const b64=await r.text();
+    window.FINANCE_DATA=await decryptData(b64,PW);
+    document.getElementById('gate').style.display='none';
+    if(!window.__appStarted){
+      window.__appStarted=true;
+      const s=document.createElement('script');
+      s.textContent=document.getElementById('appsrc').textContent;
+      document.body.appendChild(s);
+    }
+    return true;
+  }catch(e){
+    if(showErr){document.getElementById('gateMsg').textContent='Wrong password or data unavailable.';}
+    return false;
+  }
+}
+async function doLogin(){
+  PW=document.getElementById('gatePw').value;
+  document.getElementById('gateMsg').textContent='Checking...';
+  const ok=await fetchAndShow(true);
+  if(ok){try{sessionStorage.setItem('camcoFinPw',PW);}catch(e){}}
+}
+document.getElementById('gateBtn').onclick=doLogin;
+document.getElementById('gatePw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+(function(){
+  let sp=null; try{sp=sessionStorage.getItem('camcoFinPw');}catch(e){}
+  if(sp){PW=sp;fetchAndShow(false).then(ok=>{if(!ok)document.getElementById('gate').style.display='flex';});}
+})();
+</script>
+</body></html>
